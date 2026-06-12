@@ -39,7 +39,8 @@ def _run_agent(label: str, description: str, fn):
 @click.option('--blocked',    default='',   help='Comma-separated blocked feature names')
 @click.option('--velocity',   default=1.0,  help='Velocity factor from last sprint (e.g. 0.8)')
 @click.option('--output',     default=None, help='Output file path (default: sprint_N_backlog.md)')
-def negotiate(prd_file, sprint, completed, blocked, velocity, output):
+@click.option('--project-key', default='PROJ', help='Jira/ADO project key (e.g. TASKFLOW, PROJ)')
+def negotiate(prd_file, sprint, completed, blocked, velocity, output, project_key):
     """Paste a PRD. Watch 5 agents negotiate. Get a sprint backlog."""
     from agents.product_agent import ProductAgent
     from agents.engineer_agent import EngineerAgent
@@ -104,6 +105,20 @@ def negotiate(prd_file, sprint, completed, blocked, velocity, output):
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(final_output)
 
+    # attach upstream outputs to sprint_context to help downstream helpers
+    sprint_context["product_output"] = product_output
+    sprint_context["engineer_output"] = engineer_output
+
+    # generate MCP payload JSON
+    from agents.mcp_payload_generator import MCPPayloadGenerator
+    generator = MCPPayloadGenerator()
+    mcp_payload = generator.generate(negotiated, qa_output, sprint_context, project_key=locals().get('project_key', 'PROJ'))
+    mcp_file = f"sprint_{sprint}_mcp_payload.json"
+    import json
+    with open(mcp_file, 'w', encoding='utf-8') as f:
+        json.dump(mcp_payload, f, indent=2, ensure_ascii=False)
+
+
     # summary panel
     included   = negotiated.get("included_features", [])
     excluded   = negotiated.get("excluded_features", [])
@@ -121,9 +136,11 @@ def negotiate(prd_file, sprint, completed, blocked, velocity, output):
     summary.add_row("Excluded",     f"{len(excluded)} features deferred")
     summary.add_row("Output",       output_file)
     summary.add_row("Total time",   f"{total_time:.1f}s")
+    summary.add_row("📋 MCP Payload", mcp_file)
 
     console.print()
     console.print(Panel(summary, title="[bold green]Sprint plan ready[/bold green]", border_style="green"))
+    console.print("\n[bold green]✓ MCP payload ready — import into Jira, ADO, or Linear[/bold green]")
 
 
 if __name__ == '__main__':
