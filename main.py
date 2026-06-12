@@ -91,7 +91,11 @@ def negotiate(prd_file, sprint, completed, blocked, velocity, output):
 
     final_output = _run_agent(
         "Agent 5/5:", "Output Agent   — formatting the sprint backlog",
-        lambda: OutputAgent().run(negotiated, sprint_context),
+        lambda: OutputAgent().run(
+            negotiated, sprint_context,
+            qa_output=qa_output,
+            engineer_output=engineer_output,
+        ),
     )
 
     total_time = time.time() - pipeline_start

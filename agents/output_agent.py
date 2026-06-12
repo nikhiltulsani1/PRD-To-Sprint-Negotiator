@@ -13,6 +13,10 @@ from agents.foundry_client import FoundryClient
 SYSTEM_PROMPT = """You are a technical writer producing sprint documentation.
 Format the provided sprint plan as a professional markdown document.
 Be specific and actionable — this document will be handed directly to a development team to execute.
+Write like a senior developer documenting for their own team.
+No corporate filler phrases. No sentences like 'this prioritization comes with acknowledged risks'.
+Be direct and specific. If something was excluded, say why in plain English.
+If a feature has risks, name them specifically.
 Return markdown only. No explanation. No code fences."""
 
 
@@ -20,21 +24,37 @@ class OutputAgent:
     def __init__(self):
         self.client = FoundryClient()
 
-    def run(self, negotiated: dict, sprint_context: dict) -> str:
+    def run(
+        self,
+        negotiated: dict,
+        sprint_context: dict,
+        qa_output: dict = None,
+        engineer_output: dict = None,
+    ) -> str:
         sprint = negotiated.get("sprint_number", sprint_context.get("sprint", 1))
         project_name = sprint_context.get("project_name", "Project")
 
-        # ask the LLM to write the narrative context sections
+        # build lookup maps from optional upstream outputs
+        qa_map = {}
+        if qa_output:
+            for item in qa_output.get("qa_review", []):
+                qa_map[item["feature_id"]] = item
+
+        eng_map = {}
+        if engineer_output:
+            for est in engineer_output.get("estimates", []):
+                eng_map[est["feature_id"]] = est
+
+        # LLM writes the narrative sections only
         user_prompt = (
-            "Format this sprint plan as professional markdown. "
-            "Write an executive summary, a brief section on what was negotiated and why, "
-            "and any implementation guidance for the team. "
+            "Write an executive summary and negotiation context for this sprint plan. "
+            "Say what's in the sprint and why the excluded features didn't make it. "
             "Do NOT include tables — those will be added separately.\n\n"
             + json.dumps(negotiated, indent=2)
         )
         narrative = self.client.chat(SYSTEM_PROMPT, user_prompt).strip()
 
-        # --- programmatically built sections (reliable structure) ---
+        # --- programmatically built sections ---
 
         header = (
             f"## Sprint {sprint} Backlog — {project_name}\n"
@@ -43,20 +63,21 @@ class OutputAgent:
 
         goal_section = f"## Sprint Goal\n{negotiated.get('sprint_goal', '')}\n"
 
-        # committed scope table
+        # committed scope table — story points locked to Engineer Agent values
         total_pts = negotiated.get("total_committed_points", 0)
         capacity = negotiated.get("effective_capacity", 40)
-        scope_rows = "\n".join(
-            f"| {f['feature_name']} | {f['story_points']} | "
-            + ("; ".join(f["qa_requirements"][:2]) if f.get("qa_requirements") else "—")
-            + " |"
-            for f in negotiated.get("included_features", [])
-        )
+        scope_rows = []
+        for f in negotiated.get("included_features", []):
+            pts = eng_map.get(f["feature_id"], {}).get("story_points") or f["story_points"]
+            qa_item = qa_map.get(f["feature_id"], {})
+            qa_summary = "; ".join((qa_item.get("test_cases") or [])[:2]) or "—"
+            scope_rows.append(f"| {f['feature_name']} | {pts} | {qa_summary} |")
+
         scope_section = (
             f"## Committed Scope ({total_pts} / {capacity} pts)\n"
             f"| Feature | Story Points | QA Requirements |\n"
             f"|---------|-------------|------------------|\n"
-            f"{scope_rows}\n"
+            + "\n".join(scope_rows) + "\n"
         )
 
         # excluded table
@@ -86,16 +107,31 @@ class OutputAgent:
         if risks:
             risks_section = "## Risks\n" + "\n".join(f"- {r}" for r in risks) + "\n"
 
-        # QA checklist — one block per included feature, always present
+        # QA checklist — raw test_cases + edge_cases from QA Agent when available
         qa_blocks = []
         for f in negotiated.get("included_features", []):
-            reqs = f.get("qa_requirements", [])
-            if reqs:
-                checks = "\n".join(f"- [ ] {r}" for r in reqs)
+            qa_item = qa_map.get(f["feature_id"])
+            if qa_item:
+                test_cases = qa_item.get("test_cases", [])
+                edge_cases = qa_item.get("edge_cases", [])
+                checks = "\n".join(f"- [ ] {tc}" for tc in test_cases)
+                if edge_cases:
+                    checks += "\n" + "\n".join(f"- [ ] Edge: {ec}" for ec in edge_cases)
             else:
-                checks = "- [ ] Define and agree on QA requirements before development starts"
+                # fallback: summary qa_requirements from negotiated output
+                reqs = f.get("qa_requirements", [])
+                checks = (
+                    "\n".join(f"- [ ] {r}" for r in reqs)
+                    if reqs
+                    else "- [ ] Define and agree on QA requirements before development starts"
+                )
             qa_blocks.append(f"### {f['feature_name']}\n{checks}")
-        qa_section = "## QA Checklist\n" + "\n\n".join(qa_blocks) + "\n" if qa_blocks else "## QA Checklist\n_No features committed this sprint._\n"
+
+        qa_section = (
+            "## QA Checklist\n" + "\n\n".join(qa_blocks) + "\n"
+            if qa_blocks
+            else "## QA Checklist\n_No features committed this sprint._\n"
+        )
 
         # carried over from last sprint
         carried = negotiated.get("carried_over", [])
@@ -104,13 +140,7 @@ class OutputAgent:
             items = "\n".join(f"- {item}" for item in carried)
             carried_section = f"## Carried Over from Sprint {sprint - 1}\n{items}\n"
 
-        # assemble the full document
-        sections = [
-            header,
-            narrative,
-            goal_section,
-            scope_section,
-        ]
+        sections = [header, narrative, goal_section, scope_section]
         if excluded_section:
             sections.append(excluded_section)
         if notes_section:
