@@ -76,25 +76,106 @@ this reusable every sprint — not just a one-shot document generator.
 Sprint 2 with velocity 0.8 means the Negotiator works with 32 points
 instead of 40. It adjusts scope automatically.
 
+## Web UI
+
+A Streamlit interface is included for teams who prefer a browser-based workflow.
+
+```bash
+streamlit run app.py
+```
+
+Upload your PRD (TXT, MD, PDF, or DOCX), configure sprint context,
+and click **Run the Room**. Watch each specialist's reasoning appear
+live as agents complete. Results appear in three tabs:
+Sprint Backlog, MCP Export, and Summary.
+
+## MCP Export
+
+Every run generates a sprint_{N}_mcp_payload.json alongside the backlog.
+The payload is structured as tool calls compatible with:
+
+- **Jira MCP** — creates epic, stories, subtasks, and QA tasks directly
+- **Azure DevOps MCP** — same structure, ADO-compatible
+- **Linear MCP** — issues and sub-issues ready to import
+
+Each story includes implementation subtasks from the Engineer Agent
+and QA tasks from the QA Agent — typically 40–50 QA tasks per sprint.
+No copy-paste. One file. Direct import.
+
+## Why Not Just Ask Claude or GPT?
+
+A single model playing all five roles simultaneously has no one to argue with.
+It agrees with itself. Features never get cut with real reasoning.
+Capacity gets ignored. QA flags get glossed over.
+
+The difference shows up in three specific places:
+
+**Capacity enforcement.** Ask GPT-4o to plan a sprint and it will recommend
+committing 49 points to a 40-point sprint. The Negotiator hard-caps at capacity
+and explains every cut — 72.5% utilisation by default, adjustable by velocity.
+
+**QA specificity.** A single prompt produces "test the login page."
+The QA Agent produces "Verify POST /api/signup with duplicate email returns 409"
+and "JWT token replay attacks — attempt reuse of old tokens after logout."
+The difference is 9 years of QA domain knowledge encoded into the prompt.
+
+**Traceability.** Every inclusion and exclusion has explicit reasoning
+in the negotiation notes. Not a black box — a documented decision log.
+
 ## Sample Output
 
-```markdown
-## Sprint 2 Backlog — TaskFlow
+A realistic excerpt from sprint_1_backlog.md — generated from the TaskFlow sample PRD.
 
-**Sprint Goal:** Deliver stable collaboration features with full
-test coverage, focusing on Team Management and Notifications.
+---
 
-## Committed Scope (13 / 32 pts)
-| Feature | Story Points | QA Requirements |
-|---------|-------------|-----------------|
-| Team Management | 8 | Role permission boundary tests, invitation expiry |
-| Notifications | 5 | Email delivery failure handling, duplicate prevention |
+**Sprint Goal:** Implement core user authentication, task board, and team
+management features with a focus on quality and security.
 
-## Excluded This Sprint
+**Committed Scope (29 / 40 pts — 72.5% capacity)**
+
+| Feature | Points | Priority | QA Risk |
+|---------|--------|----------|---------|
+| User Authentication | 8 | High | High |
+| Task Board | 13 | High | High |
+| Team Management | 8 | High | Medium |
+
+**Excluded This Sprint**
+
 | Feature | Reason | Planned For |
 |---------|--------|-------------|
-| Task Board | QA-flagged: drag-and-drop conflict resolution undefined | Sprint 3 |
-```
+| Notifications | Medium priority, high QA risk, capacity constraint | Sprint 2 |
+| Reporting | Low priority, deferred to maintain focus | Sprint 2 |
+
+**Negotiation Notes**
+- Included all High priority features — User Auth, Task Board, Team Management — totalling 29 points
+- 72.5% capacity utilisation meets the 70-80% target range
+- Notifications excluded despite medium priority due to combined QA flags and capacity pressure
+- All included features have explicitly defined acceptance criteria — no features blocked on missing AC
+
+**QA Checklist (excerpt — full checklist has 40+ items)**
+
+User Authentication:
+- [ ] POST /signup with valid email and password returns 201 and creates user record
+- [ ] POST /signup with already registered email returns 409 with specific error message
+- [ ] POST /login with valid credentials returns 200 and properly formatted JWT
+- [ ] POST /login with invalid password returns 401 Unauthorized
+- [ ] Edge: Use expired JWT to access protected endpoint — verify 401 response
+- [ ] Edge: JWT token replay attack — reuse token after logout — verify rejection
+
+Task Board:
+- [ ] POST /tasks with valid fields returns 201 and task appears in To Do column
+- [ ] PATCH /tasks/{id}/move — drag to In Progress — verify backend state change
+- [ ] Edge: Concurrent edit of same task by two users — verify conflict handling
+- [ ] Edge: Drag and drop failure due to network latency — task must not enter inconsistent state
+
+**MCP Payload Summary**
+- 3 stories · 29 story points · 18 implementation subtasks · 46 QA tasks
+- Export: sprint_1_mcp_payload.json — ready for Jira MCP, Azure DevOps MCP, Linear MCP
+
+---
+
+> Full output includes Executive Summary, Implementation Guidance,
+> Risk Register, and complete QA Checklist with edge cases per feature.
 
 ## How to Run
 
@@ -142,6 +223,14 @@ forces specificity — "Verify signup POST /api/signup with valid email
 returns 201" instead of "test the login". That specificity comes from
 9 years of writing test cases and knowing what vague ones actually cost you.
 
+## What's Next
+
+- **Persistent memory** — agent tracks sprint history automatically, no manual --completed flag
+- **Direct Jira/Linear integration** — push backlog directly via MCP, no JSON export step
+- **Velocity learning** — estimates improve as the agent sees your team's actual delivery data
+- **Standards file** — upload team engineering standards, agent enforces them in every sprint
+- **Stakeholder summary** — non-technical plain English export for PMs and leadership
+
 ## AI Tools Used
 
 - Azure AI Foundry (gpt-4.1-mini) — all 5 agent calls
@@ -163,3 +252,7 @@ returns 201" instead of "test the login". That specificity comes from
 ## Demo
 
 ▶️ [Watch the demo](#) — link updated after recording
+
+> Runs in ~40 seconds end-to-end. Generates sprint backlog,
+> QA checklist with 40–50 specific test cases, and MCP payload
+> for direct Jira/ADO/Linear import.
