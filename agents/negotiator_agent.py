@@ -7,6 +7,7 @@ engineering, and decides what gets cut versus what gets phased into a later spri
 """
 
 from agents.foundry_client import FoundryClient
+from agents.standards_loader import load_standards
 
 SYSTEM_PROMPT = """You are an experienced scrum master and technical lead.
 You have inputs from three specialists — a product manager, an engineer, and a QA engineer.
@@ -93,6 +94,14 @@ class NegotiatorAgent:
         user_prompt += f"\nQA overall risk: {qa_output.get('overall_quality_risk', 'Unknown')}. "
         if qa_output.get("flagged_features"):
             user_prompt += f"Flagged features needing discussion: {', '.join(qa_output['flagged_features'])}."
+
+        # append team standards if provided (UI uploads content directly; CLI loads from file)
+        standards_content = sprint_context.get("standards", "")
+        if not standards_content:
+            standards = load_standards()
+            standards_content = standards.get("content", "")
+        if standards_content:
+            user_prompt += f"\n\nTeam standards to enforce:\n{standards_content}"
 
         result = self.client.json_chat(SYSTEM_PROMPT, user_prompt)
 

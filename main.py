@@ -38,15 +38,22 @@ def _run_agent(label: str, description: str, fn):
 @click.option('--completed',  default='',   help='Comma-separated completed feature names')
 @click.option('--blocked',    default='',   help='Comma-separated blocked feature names')
 @click.option('--velocity',   default=1.0,  help='Velocity factor from last sprint (e.g. 0.8)')
-@click.option('--output',     default=None, help='Output file path (default: sprint_N_backlog.md)')
-@click.option('--project-key', default='PROJ', help='Jira/ADO project key (e.g. TASKFLOW, PROJ)')
-def negotiate(prd_file, sprint, completed, blocked, velocity, output, project_key):
+@click.option('--output',     default=None,           help='Output file path (default: sprint_N_backlog.md)')
+@click.option('--project-key', default='PROJ',        help='Jira/ADO project key (e.g. TASKFLOW, PROJ)')
+@click.option('--standards', default='standards.md',  help='Path to team standards file (optional)')
+def negotiate(prd_file, sprint, completed, blocked, velocity, output, project_key, standards):
     """Paste a PRD. Watch 5 agents negotiate. Get a sprint backlog."""
+    from agents.standards_loader import load_standards
     from agents.product_agent import ProductAgent
     from agents.engineer_agent import EngineerAgent
     from agents.qa_agent import QAAgent
     from agents.negotiator_agent import NegotiatorAgent
     from agents.output_agent import OutputAgent
+
+    team_standards = load_standards(standards)
+    standards_content = team_standards.get("content", "")
+    if team_standards.get("exists"):
+        console.print(f"[dim]📋 Team standards loaded from {standards}[/dim]")
 
     console.print(Panel(
         f"[bold white]PRD-to-Sprint Negotiator[/bold white]\n"
@@ -60,11 +67,12 @@ def negotiate(prd_file, sprint, completed, blocked, velocity, output, project_ke
         prd_content = f.read()
 
     sprint_context = {
-        "sprint":     sprint,
-        "completed":  [s.strip() for s in completed.split(',') if s.strip()],
-        "blocked":    [s.strip() for s in blocked.split(',') if s.strip()],
-        "velocity":   velocity,
+        "sprint":       sprint,
+        "completed":    [s.strip() for s in completed.split(',') if s.strip()],
+        "blocked":      [s.strip() for s in blocked.split(',') if s.strip()],
+        "velocity":     velocity,
         "project_name": "Project",
+        "standards":    standards_content,
     }
 
     pipeline_start = time.time()
