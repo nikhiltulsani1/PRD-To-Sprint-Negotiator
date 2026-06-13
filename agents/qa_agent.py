@@ -13,6 +13,7 @@ time from ~45s down to the time of the slowest single feature.
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from agents.foundry_client import FoundryClient
+from agents.standards_loader import load_standards
 
 SYSTEM_PROMPT = """You are a senior QA engineer with 10 years experience in software testing.
 You are reviewing a single feature and its engineering estimate to identify quality risks.
@@ -50,9 +51,19 @@ class QAAgent:
             f"Engineering risks: {'; '.join(eng.get('technical_risks', []))}\n"
             f"Missing requirements (from eng): {'; '.join(eng.get('missing_requirements', []))}"
         )
-        return self.client.json_chat(SYSTEM_PROMPT, user_prompt)
+        system_prompt = SYSTEM_PROMPT
+        if self._standards_content:
+            system_prompt += f"\n\nApply these team QA standards to your review:\n{self._standards_content}"
+        return self.client.json_chat(system_prompt, user_prompt)
 
     def run(self, product_output: dict, engineer_output: dict, sprint_context: dict) -> dict:
+        # resolve standards content (UI passes string directly; CLI loads from file)
+        standards_content = sprint_context.get("standards", "")
+        if not standards_content:
+            standards = load_standards()
+            standards_content = standards.get("content", "")
+        self._standards_content = standards_content
+
         features = product_output["features"]
 
         with ThreadPoolExecutor(max_workers=3) as executor:

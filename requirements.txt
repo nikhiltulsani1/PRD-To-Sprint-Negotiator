@@ -5,3 +5,7 @@ click
 rich
 requests
 pytest
+streamlit
+PyMuPDF
+python-docx
+markdown
