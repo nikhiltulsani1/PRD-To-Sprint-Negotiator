@@ -42,6 +42,12 @@ python main.py samples/sample_prd.txt --sprint 2 \
   --velocity 0.8
 ```
 
+For UI use :
+
+```bash
+streamlit run app.py
+```
+
 ## How It Works
 
 ```
