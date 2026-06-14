@@ -26,29 +26,6 @@ Five specialised agents run in sequence, each adding a layer of analysis:
 - **Negotiator Agent** — reconciles all three inputs against sprint capacity and velocity, includes or excludes with explicit reasoning
 - **Output Agent** — formats the negotiated plan as a markdown sprint backlog ready to paste into Jira or GitHub Projects
 
-To run agents create .env based on .env.example and install python dependencies 
-
-```bash
-pip install -r requirements.txt
-```
-
-```bash
-# Sprint 1
-python main.py samples/sample_prd.txt --sprint 1
-
-# Sprint 2 — with context from last sprint (story points)
-python main.py samples/sample_prd.txt --sprint 2 \
-  --completed "User Authentication" \
-  --blocked "Task Board" \
-  --velocity 32
-
-# Sprint 2 — backwards compatible ratio format also works
-python main.py s
-amples/sample_prd.txt --sprint 2 \
-  --completed "User Authentication" \
-  --velocity 0.8
-```
-
 ## How It Works
 
 ```
@@ -231,8 +208,25 @@ Run with the sample PRD:
 ```bash
 python main.py samples/sample_prd.txt --sprint 1
 ```
-
 The sprint backlog is saved to sprint_1_backlog.md.
+
+Sequence of runs would be like
+```bash
+# Sprint 1
+python main.py samples/sample_prd.txt --sprint 1
+
+# Sprint 2 — with context from last sprint (story points)
+python main.py samples/sample_prd.txt --sprint 2 \
+  --completed "User Authentication" \
+  --blocked "Task Board" \
+  --velocity 32
+
+# Sprint 2 — backwards compatible ratio format also works
+python main.py s
+amples/sample_prd.txt --sprint 2 \
+  --completed "User Authentication" \
+  --velocity 0.8
+```
 
 ## What I Learned
 
@@ -283,7 +277,8 @@ returns 201" instead of "test the login". That specificity comes from
 
 ## Demo
 
-▶️ [Watch the demo](#) — link updated after recording
+▶️ [Watch the demo](https://youtu.be/XN_PZRsHqG8)
+
 
 > Runs in ~40 seconds end-to-end. Generates sprint backlog,
 > QA checklist with 40–50 specific test cases, and MCP payload
