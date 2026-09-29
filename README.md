@@ -126,7 +126,7 @@ and explains every cut — 72.5% utilisation by default, adjustable by velocity.
 **QA specificity.** A single prompt produces "test the login page."
 The QA Agent produces "Verify POST /api/signup with duplicate email returns 409"
 and "JWT token replay attacks — attempt reuse of old tokens after logout."
-The difference is 9 years of QA domain knowledge encoded into the prompt.
+The difference is 8 years of QA domain knowledge encoded into the prompt.
 
 **Traceability.** Every inclusion and exclusion has explicit reasoning
 in the negotiation notes. Not a black box — a documented decision log.
@@ -247,7 +247,7 @@ in Project Kickstart Agent.
 The QA agent produces genuinely useful test cases because the prompt
 forces specificity — "Verify signup POST /api/signup with valid email
 returns 201" instead of "test the login". That specificity comes from
-9 years of writing test cases and knowing what vague ones actually cost you.
+8 years of writing test cases and knowing what vague ones actually cost you.
 
 ## What's Next
 
@@ -298,4 +298,3 @@ returns 201" instead of "test the login". That specificity comes from
 - Microsoft Learn Username: NikhilTulsani-1371
 - GitHub: [@nikhiltulsani1](https://github.com/nikhiltulsani1)
 - Hackathon: Microsoft Agents League 2026
-- Hackathon Registered Mail : Nikhil.tulsani1@gmail.com
